@@ -1,0 +1,26 @@
+{
+  "name": "wallet-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "D. Stuart Freeman",
+  "license": "MIT",
+  "dependencies": {
+    "@digitalcredentials/did-method-key": "^2.0.3",
+    "@digitalcredentials/sign-and-verify-core": "^1.0.0",
+    "axios": "^0.25.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.2",
+    "simple-oauth2": "^4.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.8.0",
+    "eslint-config-google": "0.14.0",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-plugin-prettier": "4.0.0",
+    "prettier": "2.5.1"
+  }
+}
