@@ -1,6 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
 const express = require("express");
+const https = require("https");
 const { AuthorizationCode } = require("simple-oauth2");
 const { argv } = require("process");
 const { createIssuer } = require("@digitalcredentials/sign-and-verify-core");
@@ -22,7 +23,7 @@ const oauthConfig = {
 
 const client = new AuthorizationCode(oauthConfig);
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const deepLink = new URL(argv[2]);
 const challenge = deepLink.searchParams.get("challenge");
@@ -77,15 +78,19 @@ app.get("/callback", async (req, res) => {
     process.env.DID_SEED
   );
   const { createAndSignPresentation } = createIssuer([privateDoc]);
+  const verificationMethod = publicDoc.verificationMethod[0].id;
   const presentation = await createAndSignPresentation(
     null,
     `demo-${publicDoc.id}-${challenge}`,
     publicDoc.id,
-    { challenge }
+    { challenge, verificationMethod }
   );
   return res.send(
     await axios.post(requestEndpoint, presentation, {
       headers: { Authorization: `Bearer ${token}` },
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false,
+      }),
     })
   );
 });
