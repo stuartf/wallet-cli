@@ -10,33 +10,42 @@ const { createIssuer } = require("@digitalcredentials/sign-and-verify-core");
 const { driver } = require("@digitalcredentials/did-method-key");
 const { exec } = require("child_process");
 const { URL } = require("url");
-
-const oauthConfig = {
-  client: {
-    id: "demo",
-  },
-  auth: {
-    tokenHost: "https://oauth.127.0.0.1.nip.io",
-    authorizePath: "default/authorize",
-    tokenPath: "default/token",
-  },
-  http: {
-    rejectUnauthorized: false,
-  },
-};
+const issuerRegistry = require("./issuerRegistry");
 
 const codeVerifier = crypto.randomBytes(25).toString("hex");
 const codeChallenge = base64url.encode(
   crypto.createHash("sha256").update(codeVerifier).digest()
 );
 
-const client = new AuthorizationCode(oauthConfig);
 const app = express();
 const port = process.env.PORT || 3000;
 
 const deepLink = new URL(argv[2]);
 const challenge = deepLink.searchParams.get("challenge");
 const requestEndpoint = deepLink.searchParams.get("vc_request_url");
+const issuer = deepLink.searchParams.get("issuer");
+const issuerConfig = issuerRegistry.entries[issuer];
+const authUrl = new URL(
+  issuerConfig.serviceConfiguration.authorizationEndpoint
+);
+const tokenUrl = new URL(issuerConfig.serviceConfiguration.tokenEndpoint);
+
+const oauthConfig = {
+  client: {
+    id: issuerConfig.clientId,
+  },
+  auth: {
+    authorizeHost: authUrl.origin,
+    authorizePath: authUrl.pathname,
+    tokenHost: tokenUrl.origin,
+    tokenPath: tokenUrl.pathname,
+  },
+  http: {
+    rejectUnauthorized: false,
+  },
+};
+
+const client = new AuthorizationCode(oauthConfig);
 
 const privatizeDidDoc = (didDocument, getMethodForPurpose) => {
   const didDocumentClone = JSON.parse(JSON.stringify(didDocument));
@@ -68,8 +77,8 @@ const getDidDocFromSeed = async (seed) => {
 
 const run = async () => {
   const authorizationUri = client.authorizeURL({
-    redirect_uri: `http://localhost:${port}/callback`,
-    scope: ["openid", "profile"],
+    redirect_uri: issuerConfig.redirectUrl,
+    scope: issuerConfig.scopes,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
   });
@@ -81,7 +90,7 @@ app.get("/callback", async (req, res) => {
   const tokenParams = {
     code,
     redirect_uri: "dccrequest://oauth",
-    scope: ["openid", "profile"],
+    scope: issuerConfig.scopes,
     code_verifier: codeVerifier,
   };
 
