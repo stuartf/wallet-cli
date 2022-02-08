@@ -1,5 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
+const base64url = require("base64url");
+const crypto = require("crypto");
 const express = require("express");
 const https = require("https");
 const { AuthorizationCode } = require("simple-oauth2");
@@ -15,11 +17,18 @@ const oauthConfig = {
   },
   auth: {
     tokenHost: "https://oauth.127.0.0.1.nip.io",
+    authorizePath: "default/authorize",
+    tokenPath: "default/token",
   },
   http: {
     rejectUnauthorized: false,
   },
 };
+
+const codeVerifier = crypto.randomBytes(25).toString("hex");
+const codeChallenge = base64url.encode(
+  crypto.createHash("sha256").update(codeVerifier).digest()
+);
 
 const client = new AuthorizationCode(oauthConfig);
 const app = express();
@@ -61,6 +70,8 @@ const run = async () => {
   const authorizationUri = client.authorizeURL({
     redirect_uri: `http://localhost:${port}/callback`,
     scope: ["openid", "profile"],
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
   exec(`xdg-open '${authorizationUri}'`).unref();
 };
@@ -71,6 +82,7 @@ app.get("/callback", async (req, res) => {
     code,
     redirect_uri: "dccrequest://oauth",
     scope: ["openid", "profile"],
+    code_verifier: codeVerifier,
   };
 
   const { token } = await client.getToken(tokenParams);
@@ -87,12 +99,14 @@ app.get("/callback", async (req, res) => {
     { challenge, verificationMethod }
   );
   try {
-    const cred = await axios.post(requestEndpoint, presentation, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-      }),
-    });
+    const cred = await axios
+      .post(requestEndpoint, presentation, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+        }),
+      })
+      .then(({ data }) => data);
     console.log(cred);
     return res.send(cred);
   } catch (err) {
