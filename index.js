@@ -74,6 +74,7 @@ app.get("/callback", async (req, res) => {
   };
 
   const { token } = await client.getToken(tokenParams);
+  const accessToken = token.access_token;
   const { publicDoc, privateDoc } = await getDidDocFromSeed(
     process.env.DID_SEED
   );
@@ -85,14 +86,21 @@ app.get("/callback", async (req, res) => {
     publicDoc.id,
     { challenge, verificationMethod }
   );
-  return res.send(
-    await axios.post(requestEndpoint, presentation, {
-      headers: { Authorization: `Bearer ${token}` },
+  try {
+    const cred = await axios.post(requestEndpoint, presentation, {
+      headers: { Authorization: `Bearer ${accessToken}` },
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
       }),
-    })
-  );
+    });
+    console.log(cred);
+    return res.send(cred);
+  } catch (err) {
+    console.log(err.toJSON());
+    return res.status(500).send(err.toJSON());
+  } finally {
+    process.exit();
+  }
 });
 
 app.listen(port, () => {
