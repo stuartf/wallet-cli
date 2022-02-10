@@ -6,7 +6,7 @@ module.exports = {
     updated: "2021-12-20T10:47:36+0000",
   },
   entries: {
-    "http://oauth:8080/default": {
+    "https://oauth.127.0.0.1.nip.io/default": {
       issuer: "https://oauth.127.0.0.1.nip.io/default",
       clientId: "demo",
       redirectUrl: `http://localhost:${port}/callback`,
